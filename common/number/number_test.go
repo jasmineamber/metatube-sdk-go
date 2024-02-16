@@ -1,3 +1,4 @@
+// autocorrect: false
 package number
 
 import (
@@ -187,6 +188,7 @@ func TestTrim(t *testing.T) {
 		{"MIDV-111_X1080X.mp4", "MIDV-111"},
 		{"MIDV-111-C_X1080X.mp4", "MIDV-111"},
 		{"hhd800.com@MIDV-111-C_X1080X.mp4", "MIDV-111"},
+		{"hhd800.com@dass00328hhb", "dass00328"},
 	} {
 		assert.Equal(t, unit.want, Trim(unit.orig), unit.orig)
 	}
