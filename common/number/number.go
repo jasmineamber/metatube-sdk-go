@@ -20,7 +20,7 @@ func Trim(s string) string {
 	}
 	s = regexp.MustCompile(`(?i)^(?:f?hd|sd)[-_](.*$)`).
 		ReplaceAllString(s, "${1}") // trim special prefixes
-	s = regexp.MustCompile(`(?i)hhb$`).ReplaceAllString(s, "") // trim x1080x tag
+	s = regexp.MustCompile(`(?i)hhb`).ReplaceAllString(s, "") // trim x1080x tag
 	s = regexp.MustCompile(`(?i)[-_.](dvd|iso|mkv|mp4|c?avi|\d*fps|whole|(f|hhb)?hd\d*|sd\d*|(?:360|480|720|1080|2160)[pi]|X1080X|uncensored|leak|[2468]k|[xh]26[45])+`).
 		ReplaceAllString(s, "") // trim tags
 	s = regexp.MustCompile(`(?i)(^|[-_\s]+)(carib(b?ean)?(com)?(pr)?|1?Pond?o?|10mu(sume)?|paco(paco)?(mama)?|mura(mura)?|Tokyo[-_\s]?Hot)([-_\s]+(?P<pattern>\d{4,}[-_]\d{2,}|[a-z]{1,4}\d{2,4})|$)`).
