@@ -190,6 +190,7 @@ func TestTrim(t *testing.T) {
 		{"hhd800.com@MIDV-111-C_X1080X.mp4", "MIDV-111"},
 		{"hhd800.com@dass00328hhb", "dass00328"},
 		{"hhd800.com@sone00047hhb_60fps", "sone00047"},
+		{"hhd800_com@1sdmm00116hhb", "1sdmm00116"},
 	} {
 		assert.Equal(t, unit.want, Trim(unit.orig), unit.orig)
 	}

@@ -11,7 +11,7 @@ func Trim(s string) string {
 	if ext := path.Ext(s); len(ext) < maxExtLength {
 		s = s[:len(s)-len(ext)] // trim extension
 	}
-	s = regexp.MustCompile(`(?i)([a-z\d]+\.(?:com|net|top|xyz|tv))(?:[^a-z\d]|$)`).
+	s = regexp.MustCompile(`(?i)([a-z\d]+[\._](?:com|net|top|xyz|tv))(?:[^a-z\d]|$)`).
 		ReplaceAllString(s, "") // trim domain
 	if ss := regexp.MustCompile(`(?i)([a-z\d]+(?:[-_][a-z\d]{2,})+)`).FindStringSubmatch(s); len(ss) > 0 {
 		s = ss[1] // first find number with dashes
