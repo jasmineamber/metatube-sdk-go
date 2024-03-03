@@ -10,6 +10,7 @@ import (
 func TestJavDB_GetMovieInfoByID(t *testing.T) {
 	provider := New()
 	for _, item := range []string{
+		"Yw8XB",
 		//"BabyGotBoobs.18.12.27",
 		//"BigNaturals.BigNaturals.23.05.27 Big Tits VR",
 		//"BigNaturals Big Tits VR",
@@ -26,8 +27,9 @@ func TestJavBus_SearchMovie(t *testing.T) {
 	//"http://127.0.0.1:8080/v1/movies/search?q=BigNaturals+Big+Tits+VR&provider=&fallback=True"
 	provider := New()
 	for _, item := range []string{
-		"BigNaturals Big Tits VR",
-		"BabyGotBoobs Lovely In Latex",
+		// "BigNaturals Big Tits VR",
+		// "BabyGotBoobs Lovely In Latex",
+		"ARM-383",
 	} {
 		results, err := provider.SearchMovie(provider.NormalizeMovieKeyword(item))
 		data, _ := json.MarshalIndent(results, "", "\t")

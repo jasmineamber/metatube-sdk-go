@@ -77,9 +77,17 @@ func (db *JavDB) GetMovieInfoByURL(rawURL string) (info *model.MovieInfo, err er
 	}
 
 	c := db.ClonedCollector()
+
 	// Title
-	c.OnXML(`//strong[@class="current-title"]`, func(e *colly.XMLElement) {
+	c.OnXML(`//span[@class="origin-title"]`, func(e *colly.XMLElement) {
 		info.Title = e.Text
+	})
+
+	// Title (fallback)
+	c.OnXML(`//strong[@class="current-title"]`, func(e *colly.XMLElement) {
+		if info.Title == "" {
+			info.Title = e.Text
+		}
 	})
 
 	// Image
