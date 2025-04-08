@@ -172,5 +172,5 @@ func (db *JavDB) SearchMovie(keyword string) (results []*model.MovieSearchResult
 }
 
 func init() {
-	provider.RegisterMovieFactory(Name, New)
+	provider.Register(Name, New)
 }
