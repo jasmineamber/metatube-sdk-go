@@ -3,6 +3,7 @@ package engine
 import (
 	"log"
 	"os"
+	"strings"
 
 	"github.com/metatube-community/metatube-sdk-go/common/fetch"
 	mt "github.com/metatube-community/metatube-sdk-go/provider"
@@ -27,6 +28,8 @@ func (e *Engine) initFetcher() {
 // initActorProviders initializes actor providers.
 func (e *Engine) initActorProviders() {
 	for name, factory := range mt.RangeActorFactory {
+		name = strings.ToUpper(name)
+
 		provider := factory()
 
 		if s, ok := provider.(mt.RequestTimeoutSetter); ok {
@@ -55,6 +58,8 @@ func (e *Engine) initActorProviders() {
 // initMovieProviders initializes movie providers.
 func (e *Engine) initMovieProviders() {
 	for name, factory := range mt.RangeMovieFactory {
+		name = strings.ToUpper(name)
+
 		provider := factory()
 
 		if s, ok := provider.(mt.RequestTimeoutSetter); ok {
