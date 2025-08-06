@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/gocolly/colly/v2"
+	"golang.org/x/text/language"
 
 	"github.com/metatube-community/metatube-sdk-go/common/parser"
 	"github.com/metatube-community/metatube-sdk-go/model"
@@ -42,7 +43,7 @@ func (db *JavDB) NormalizeMovieKeyword(Keyword string) string {
 }
 
 func New() *JavDB {
-	return &JavDB{scraper.NewDefaultScraper(Name, baseURL, Priority)}
+	return &JavDB{scraper.NewDefaultScraper(Name, baseURL, Priority, language.Japanese)}
 }
 
 func (db *JavDB) NormalizeID(id string) string {
