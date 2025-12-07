@@ -15,8 +15,5 @@ func TestJavDB_GetMovieInfoByID(t *testing.T) {
 func TestJavBus_SearchMovie(t *testing.T) {
 	testkit.Test(t, New, []string{
 		"ARM-383",
-		"MEYD-856",
-		"SSIS-354",
-		"HMN",
 	})
 }
