@@ -327,6 +327,8 @@ func (ab *AVBase) getBuildID() (buildID string, err error) {
 
 	c := ab.ClonedCollector()
 
+	c.SetProxy("http://127.0.0.1:8082")
+
 	c.OnXML(`//*[@id="__NEXT_DATA__"]`, func(e *colly.XMLElement) {
 		data := struct {
 			BuildId string `json:"buildId"`
