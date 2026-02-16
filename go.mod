@@ -29,7 +29,7 @@ require (
 	github.com/ory/dockertest v3.3.5+incompatible
 	github.com/peterbourgon/ff/v3 v3.4.0
 	github.com/projectbarks/cimap v0.1.1
-	github.com/projectdiscovery/useragent v0.0.106
+	github.com/projectdiscovery/useragent v0.0.107
 	github.com/projectdiscovery/utils v0.9.0
 	github.com/robertkrimen/otto v0.5.1
 	github.com/sashabaranov/go-openai v1.41.2
@@ -40,9 +40,9 @@ require (
 	go.eigsys.de/gin-cachecontrol/v2 v2.4.1
 	go.uber.org/atomic v1.11.0
 	go.uber.org/automaxprocs v1.6.0
-	golang.org/x/image v0.35.0
-	golang.org/x/net v0.49.0
-	golang.org/x/text v0.33.0
+	golang.org/x/image v0.36.0
+	golang.org/x/net v0.50.0
+	golang.org/x/text v0.34.0
 	gorm.io/datatypes v1.2.7
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.31.1
@@ -119,9 +119,9 @@ require (
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.1 // indirect
 	go.uber.org/mock v0.6.0 // indirect
-	golang.org/x/arch v0.23.0 // indirect
-	golang.org/x/crypto v0.47.0 // indirect
-	golang.org/x/exp v0.0.0-20260112195511-716be5621a96 // indirect
+	golang.org/x/arch v0.24.0 // indirect
+	golang.org/x/crypto v0.48.0 // indirect
+	golang.org/x/exp v0.0.0-20260212183809-81e46e3db34a // indirect
 	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
@@ -130,8 +130,8 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/driver/mysql v1.6.0 // indirect
 	gotest.tools v2.2.0+incompatible // indirect
-	modernc.org/libc v1.67.6 // indirect
+	modernc.org/libc v1.67.7 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
-	modernc.org/sqlite v1.44.3 // indirect
+	modernc.org/sqlite v1.45.0 // indirect
 )
