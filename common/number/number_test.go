@@ -193,6 +193,7 @@ func TestTrim(t *testing.T) {
 		{"hhd800.com@midv00905hhb1", "midv00905"},
 		{"hhd800.com@1fcdss00072hhb2", "1fcdss00072"},
 		{"hhd800.com@jums00150hhb", "jums00150"},
+		{"hhd800_com@1stars00642hhb", "1stars00642"},
 	} {
 		assert.Equal(t, unit.want, Trim(unit.orig), unit.orig)
 	}
