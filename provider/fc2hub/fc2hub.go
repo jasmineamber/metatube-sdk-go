@@ -64,6 +64,10 @@ func (fc2hub *FC2HUB) ParseMovieIDFromURL(rawURL string) (string, error) {
 }
 
 func (fc2hub *FC2HUB) GetMovieInfoByURL(rawURL string) (info *model.MovieInfo, err error) {
+	if rawURL, err = fc2hub.normalizeMovieURL(rawURL); err != nil {
+		return
+	}
+
 	id, err := fc2hub.ParseMovieIDFromURL(rawURL)
 	if err != nil {
 		return
@@ -211,6 +215,17 @@ func (fc2hub *FC2HUB) GetMovieInfoByURL(rawURL string) (info *model.MovieInfo, e
 
 	err = c.Visit(info.Homepage)
 	return
+}
+
+func (fc2hub *FC2HUB) normalizeMovieURL(rawURL string) (string, error) {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return "", err
+	}
+	if u.Host == fc2hub.URL().Host {
+		u.Scheme = fc2hub.URL().Scheme
+	}
+	return u.String(), nil
 }
 
 func (fc2hub *FC2HUB) NormalizeMovieKeyword(keyword string) string {

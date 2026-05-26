@@ -6,6 +6,18 @@ import (
 	"github.com/metatube-community/metatube-sdk-go/provider/internal/testkit"
 )
 
+func TestFC2HUB_NormalizeMovieURL(t *testing.T) {
+	fc2hub := New()
+	got, err := fc2hub.normalizeMovieURL("http://javten.com/video/1794095/id4304428/title")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const want = "https://javten.com/video/1794095/id4304428/title"
+	if got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
 func TestFC2HUB_GetMovieInfoByID(t *testing.T) {
 	testkit.Test(t, New, []string{
 		"1152468-2725031",
