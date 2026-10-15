@@ -2,11 +2,15 @@ package fc2hub
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/gocolly/colly/v2"
 	"golang.org/x/net/html"
@@ -22,6 +26,7 @@ import (
 var (
 	_ provider.MovieProvider = (*FC2HUB)(nil)
 	_ provider.MovieSearcher = (*FC2HUB)(nil)
+	_ provider.ConfigSetter  = (*FC2HUB)(nil)
 )
 
 const (
@@ -33,14 +38,72 @@ const (
 	baseURL   = "https://javten.com/"
 	movieURL  = "https://javten.com/video/%s/id%s/%s"
 	searchURL = "https://javten.com/search?kw=%s"
+
+	defaultCookieURL = "http://192.168.2.24:8000/cookies"
+	cookieOrigin     = "https://javten.com/"
+	cookieSessionTTL = 29 * time.Minute
+	defaultTimeout   = time.Minute
 )
 
 type FC2HUB struct {
 	*scraper.Scraper
+
+	scrapeMu           sync.Mutex
+	cookieURL          string
+	cookieClient       *http.Client
+	cookieSession      *cfCookieSession
+	managedCookieNames map[string]struct{}
+	now                func() time.Time
 }
 
 func New() *FC2HUB {
-	return &FC2HUB{scraper.NewDefaultScraper(Name, baseURL, Priority, language.Japanese)}
+	return &FC2HUB{
+		Scraper:            scraper.NewDefaultScraper(Name, baseURL, Priority, language.Japanese),
+		cookieURL:          defaultCookieURL,
+		cookieClient:       &http.Client{Timeout: defaultTimeout},
+		managedCookieNames: make(map[string]struct{}),
+		now:                time.Now,
+	}
+}
+
+type cfCookieSession struct {
+	cookies   map[string]string
+	userAgent string
+	expiresAt time.Time
+}
+
+type cfCookieResponse struct {
+	Cookies   map[string]string `json:"cookies"`
+	UserAgent string            `json:"user_agent"`
+}
+
+func (fc2hub *FC2HUB) SetRequestTimeout(timeout time.Duration) {
+	fc2hub.scrapeMu.Lock()
+	defer fc2hub.scrapeMu.Unlock()
+	fc2hub.Scraper.SetRequestTimeout(timeout)
+	fc2hub.cookieClient.Timeout = timeout
+}
+
+func (fc2hub *FC2HUB) SetConfig(config provider.Config) error {
+	if !config.Has("cf_cookie_url") {
+		return nil
+	}
+	cookieURL, err := config.GetString("cf_cookie_url")
+	if err != nil {
+		return fmt.Errorf("get cf_cookie_url: %w", err)
+	}
+	parsed, err := url.Parse(cookieURL)
+	if err != nil || parsed == nil || parsed.Host == "" ||
+		(parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return errors.New("cf_cookie_url must be an absolute http or https URL")
+	}
+
+	fc2hub.scrapeMu.Lock()
+	defer fc2hub.scrapeMu.Unlock()
+	fc2hub.cookieURL = parsed.String()
+	fc2hub.cookieSession = nil
+	fc2hub.clearManagedCookies()
+	return nil
 }
 
 func (fc2hub *FC2HUB) GetMovieInfoByID(id string) (info *model.MovieInfo, err error) {
@@ -68,6 +131,16 @@ func (fc2hub *FC2HUB) GetMovieInfoByURL(rawURL string) (info *model.MovieInfo, e
 		return
 	}
 
+	fc2hub.scrapeMu.Lock()
+	defer fc2hub.scrapeMu.Unlock()
+
+	c := fc2hub.ClonedCollector()
+	session := fc2hub.bootstrapCookies(rawURL)
+	fc2hub.applyCookieSession(c, session)
+	return fc2hub.getMovieInfoByURL(rawURL, c)
+}
+
+func (fc2hub *FC2HUB) getMovieInfoByURL(rawURL string, c *colly.Collector) (info *model.MovieInfo, err error) {
 	id, err := fc2hub.ParseMovieIDFromURL(rawURL)
 	if err != nil {
 		return
@@ -82,7 +155,6 @@ func (fc2hub *FC2HUB) GetMovieInfoByURL(rawURL string) (info *model.MovieInfo, e
 		Genres:        []string{},
 	}
 
-	c := fc2hub.ClonedCollector()
 	// Allow redirecting, for cases like http -> https
 	c.SetRedirectHandler(func(req *http.Request, via []*http.Request) error {
 		return nil
@@ -233,28 +305,137 @@ func (fc2hub *FC2HUB) NormalizeMovieKeyword(keyword string) string {
 }
 
 func (fc2hub *FC2HUB) SearchMovie(keyword string) (results []*model.MovieSearchResult, err error) {
+	targetURL := fmt.Sprintf(searchURL, url.QueryEscape(keyword))
+
+	fc2hub.scrapeMu.Lock()
+	defer fc2hub.scrapeMu.Unlock()
+
 	c := fc2hub.ClonedCollector()
+	session := fc2hub.bootstrapCookies(targetURL)
+	fc2hub.applyCookieSession(c, session)
 	c.ParseHTTPErrorResponse = true
 	c.SetRedirectHandler(func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
 	})
 
+	var detailURL string
+	var responseErr error
 	c.OnResponse(func(r *colly.Response) {
-		var loc *url.URL
-		if loc, err = url.Parse(r.Request.AbsoluteURL(r.Headers.Get("Location"))); err != nil {
+		loc, parseErr := url.Parse(r.Request.AbsoluteURL(r.Headers.Get("Location")))
+		if parseErr != nil {
+			responseErr = parseErr
 			return
 		}
 		if regexp.MustCompile(`/video/\d+/id\d+`).MatchString(loc.Path) {
-			var info *model.MovieInfo
-			if info, err = fc2hub.GetMovieInfoByURL(loc.String()); err != nil {
-				return
-			}
-			results = append(results, info.ToSearchResult())
+			detailURL = loc.String()
 		}
 	})
 
-	err = c.Visit(fmt.Sprintf(searchURL, url.QueryEscape(keyword)))
+	if err = c.Visit(targetURL); err != nil {
+		return nil, err
+	}
+	if responseErr != nil {
+		return nil, responseErr
+	}
+	if detailURL == "" {
+		return
+	}
+
+	detailURL, err = fc2hub.normalizeMovieURL(detailURL)
+	if err != nil {
+		return nil, err
+	}
+	detailCollector := fc2hub.ClonedCollector()
+	fc2hub.applyCookieSession(detailCollector, session)
+	var info *model.MovieInfo
+	if info, err = fc2hub.getMovieInfoByURL(detailURL, detailCollector); err != nil {
+		return nil, err
+	}
+	results = append(results, info.ToSearchResult())
 	return
+}
+
+func (fc2hub *FC2HUB) bootstrapCookies(targetURL string) *cfCookieSession {
+	endpoint, err := url.Parse(fc2hub.cookieURL)
+	if err != nil {
+		return fc2hub.currentCookieSession()
+	}
+	query := endpoint.Query()
+	query.Set("url", targetURL)
+	endpoint.RawQuery = query.Encode()
+
+	req, err := http.NewRequest(http.MethodGet, endpoint.String(), nil)
+	if err != nil {
+		return fc2hub.currentCookieSession()
+	}
+	resp, err := fc2hub.cookieClient.Do(req)
+	if err != nil {
+		return fc2hub.currentCookieSession()
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fc2hub.currentCookieSession()
+	}
+
+	var data cfCookieResponse
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil || json.Unmarshal(body, &data) != nil ||
+		len(data.Cookies) == 0 || strings.TrimSpace(data.UserAgent) == "" {
+		return fc2hub.currentCookieSession()
+	}
+
+	session := &cfCookieSession{
+		cookies:   make(map[string]string, len(data.Cookies)),
+		userAgent: data.UserAgent,
+		expiresAt: fc2hub.now().Add(cookieSessionTTL),
+	}
+	for name, value := range data.Cookies {
+		if name == "" {
+			return fc2hub.currentCookieSession()
+		}
+		session.cookies[name] = value
+	}
+	fc2hub.cookieSession = session
+	return session
+}
+
+func (fc2hub *FC2HUB) currentCookieSession() *cfCookieSession {
+	if fc2hub.cookieSession == nil || !fc2hub.now().Before(fc2hub.cookieSession.expiresAt) {
+		fc2hub.cookieSession = nil
+		return nil
+	}
+	return fc2hub.cookieSession
+}
+
+func (fc2hub *FC2HUB) applyCookieSession(c *colly.Collector, session *cfCookieSession) {
+	nextNames := make(map[string]struct{})
+	if session != nil {
+		c.UserAgent = session.userAgent
+		cookies := make([]*http.Cookie, 0, len(session.cookies))
+		for name, value := range session.cookies {
+			nextNames[name] = struct{}{}
+			cookies = append(cookies, &http.Cookie{Name: name, Value: value, Path: "/"})
+		}
+		_ = c.SetCookies(cookieOrigin, cookies)
+	}
+
+	for name := range fc2hub.managedCookieNames {
+		if _, keep := nextNames[name]; !keep {
+			_ = c.SetCookies(cookieOrigin, []*http.Cookie{{Name: name, Path: "/", MaxAge: -1}})
+		}
+	}
+	fc2hub.managedCookieNames = nextNames
+}
+
+func (fc2hub *FC2HUB) clearManagedCookies() {
+	if len(fc2hub.managedCookieNames) == 0 {
+		return
+	}
+	c := fc2hub.ClonedCollector()
+	for name := range fc2hub.managedCookieNames {
+		_ = c.SetCookies(cookieOrigin, []*http.Cookie{{Name: name, Path: "/", MaxAge: -1}})
+	}
+	fc2hub.managedCookieNames = make(map[string]struct{})
 }
 
 func removeEmpty(in []string) (out []string) {
