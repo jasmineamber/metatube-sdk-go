@@ -31,7 +31,7 @@ const (
 const (
 	baseURL   = "https://javfree.me/"
 	movieURL  = "https://javfree.me/%s/%s"
-	searchURL = "https://javfree.me/?s=%s"
+	searchURL = "https://javfree.me/search/%s"
 )
 
 type JAVFREE struct {
